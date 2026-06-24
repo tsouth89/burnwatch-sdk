@@ -1,0 +1,31 @@
+[project]
+name = "burnwatch"
+version = "0.1.0"
+description = "Burnwatch SDK: mirror your AI agent's payments to Burnwatch for spend monitoring."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Brandon South" }]
+keywords = ["ai-agents", "x402", "payments", "monitoring", "observability", "stablecoins", "agentic-commerce"]
+dependencies = []  # stdlib-only on purpose: a monitor must never add weight or break your agent
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Intended Audience :: Developers",
+    "Topic :: System :: Monitoring",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://burnwatch.dev"
+Dashboard = "https://app.burnwatch.dev"
+Repository = "https://github.com/tsouth89/burnwatch-sdk"
+Documentation = "https://github.com/tsouth89/burnwatch-sdk/blob/main/README.md"
+
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["burnwatch*"]
