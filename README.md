@@ -120,6 +120,10 @@ Every alert ships with explainable evidence (the exact numbers and thresholds th
 
 ![Every alert ships with the evidence](assets/burnwatch-evidence.png)
 
+## Turn alerts into action (optional)
+
+Burnwatch is observe-only on purpose: it never sits in your payment path and never holds your keys, so it can't slow or break your agent. To make a detection *do* something automatically, point a webhook (dashboard -> Settings -> Alert delivery) at a small receiver that pauses or de-funds the agent. [`examples/killswitch.py`](examples/killswitch.py) is a complete, stdlib-only one you can copy.
+
 ## Client reference
 
 `BurnwatchClient(endpoint, token, *, flush_interval=2.0, max_batch=100, timeout=3.0, enabled=True)`
