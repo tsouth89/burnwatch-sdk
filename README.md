@@ -122,7 +122,7 @@ Every alert ships with explainable evidence (the exact numbers and thresholds th
 
 ## Turn alerts into action (optional)
 
-Burnwatch is observe-only on purpose: it never sits in your payment path and never holds your keys, so it can't slow or break your agent. To make a detection *do* something automatically, point a webhook (dashboard -> Settings -> Alert delivery) at a small receiver that pauses or de-funds the agent. [`examples/killswitch.py`](examples/killswitch.py) is a complete, stdlib-only one you can copy.
+Burnwatch is observe-only on purpose: it never sits in your payment path and never holds your keys, so it can't slow or break your agent. To make a detection *do* something automatically, point a webhook (dashboard -> Settings -> Alert delivery) at a small receiver that pauses or de-funds the agent. [`examples/killswitch.py`](examples/killswitch.py) is a complete, stdlib-only one you can copy. Routing to on-call instead? [`examples/pagerduty_relay.py`](examples/pagerduty_relay.py) maps the webhook to PagerDuty's Events API (same pattern for Opsgenie and similar).
 
 ## Client reference
 
