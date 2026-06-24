@@ -7,20 +7,24 @@ watching Slack.
 
 How to use:
   1. Run this server and expose it on a URL Burnwatch can reach (a tunnel, a small box, a lambda).
-  2. In the dashboard: Settings -> Alert delivery -> add a webhook pointing at that URL.
-  3. Replace pause_agent() below with whatever actually halts your agent.
+  2. In the dashboard: Settings -> Alert delivery -> add a JSON webhook pointing at that URL.
+  3. If the dashboard shows a webhook signing secret, set BURNWATCH_WEBHOOK_SECRET to it so this
+     server verifies every request (HMAC-SHA256 over "<timestamp>.<body>"). If it does not, signing
+     is off server-side and verification is skipped.
+  4. Replace pause_agent() below with whatever actually halts your agent.
 
-Webhooks are not signed yet, so protect this endpoint with a shared secret: register the webhook
-URL as https://your-host/hook?secret=YOUR_SECRET and set BURNWATCH_WEBHOOK_SECRET to the same
-value. Stdlib-only, like the SDK - no dependencies.
+Stdlib-only, like the SDK - no dependencies.
 """
+import hashlib
+import hmac
 import json
 import os
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from urllib.parse import parse_qs, urlparse
 
-SECRET = os.environ.get("BURNWATCH_WEBHOOK_SECRET")  # shared secret in the webhook URL's ?secret=
+SECRET = os.environ.get("BURNWATCH_WEBHOOK_SECRET")  # per-org signing secret from the dashboard
 ACT_ON = {"high", "critical"}                         # only kill on serious alerts, not every nudge
+MAX_AGE = 300                                         # seconds; reject stale (replayed) deliveries
 
 
 def pause_agent(agent_id: str, agent_name: str, reason: str) -> None:
@@ -34,14 +38,30 @@ def pause_agent(agent_id: str, agent_name: str, reason: str) -> None:
     # e.g. requests.post(f"https://your-control-plane/agents/{agent_id}/pause", timeout=5)
 
 
+def _verified(body: bytes, headers) -> bool:
+    """True if signing is off, or the signature is present, fresh, and valid."""
+    if not SECRET:
+        return True  # signing disabled server-side; nothing to verify
+    ts = headers.get("X-Burnwatch-Timestamp", "")
+    sig = headers.get("X-Burnwatch-Signature", "").removeprefix("sha256=")
+    if not ts or not sig:
+        return False
+    try:
+        if abs(time.time() - int(ts)) > MAX_AGE:
+            return False
+    except ValueError:
+        return False
+    expected = hmac.new(SECRET.encode(), ts.encode() + b"." + body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, sig)
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
-        if SECRET and parse_qs(urlparse(self.path).query).get("secret", [None])[0] != SECRET:
+        body = self.rfile.read(int(self.headers.get("Content-Length", 0) or 0))
+        if not _verified(body, self.headers):
             self.send_response(403)
             self.end_headers()
             return
-
-        body = self.rfile.read(int(self.headers.get("Content-Length", 0) or 0))
         try:
             alert = json.loads(body)
         except json.JSONDecodeError:
