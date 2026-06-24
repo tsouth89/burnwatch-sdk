@@ -10,7 +10,7 @@ from typing import Any
 
 log = logging.getLogger("burnwatch")
 
-__sdk_version__ = "0.1.0"
+__sdk_version__ = "0.1.1"
 
 
 class BurnwatchClient:

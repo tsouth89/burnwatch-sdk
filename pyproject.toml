@@ -1,6 +1,6 @@
 [project]
 name = "burnwatch"
-version = "0.1.0"
+version = "0.1.1"
 description = "Burnwatch SDK: mirror your AI agent's payments to Burnwatch for spend monitoring."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -29,3 +29,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["burnwatch*"]
+
+[tool.setuptools.package-data]
+burnwatch = ["py.typed"]

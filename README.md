@@ -7,7 +7,7 @@
 Your agents pay for APIs, tools, and services on their own, over x402 or stablecoins. A bug, a runaway loop, or a prompt injection can drain funds fast. Burnwatch learns each agent's normal spend and alerts you the moment something looks wrong. It never holds your keys and never sits in the payment path.
 
 [![PyPI](https://img.shields.io/pypi/v/burnwatch.svg)](https://pypi.org/project/burnwatch/)
-[![Python](https://img.shields.io/pypi/pyversions/burnwatch.svg)](https://pypi.org/project/burnwatch/)
+[![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://pypi.org/project/burnwatch/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 </div>
