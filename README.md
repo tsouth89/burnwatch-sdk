@@ -20,7 +20,7 @@ Burnwatch is monitoring you bolt onto an agent that spends real money, so you sh
 
 - **Stdlib-only.** Zero dependencies. A monitor must never add weight or a new supply-chain surface to your agent.
 - **Observe-only.** It mirrors payment *metadata* outbound. It never holds keys or funds and never sits in the payment path.
-- **Fail-open.** Recording is async and batched. If Burnwatch is unreachable, your agent keeps paying as normal. Monitoring can never break the thing it monitors.
+- **Fail-open.** Recording is async and batched, and a transient outage re-queues events rather than dropping them (bounded buffer). If Burnwatch is unreachable, your agent keeps paying as normal. Monitoring can never break the thing it monitors.
 
 The cloud backend that learns baselines and runs detection is a separate, source-available product. The detection logic itself is documented in full in [DETECTION.md](DETECTION.md), so nothing about how alerts fire is a black box.
 

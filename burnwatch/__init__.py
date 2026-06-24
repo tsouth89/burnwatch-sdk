@@ -16,4 +16,4 @@ from burnwatch.client import BurnwatchClient
 from burnwatch.x402 import PaymentMirror, X402Monitor
 
 __all__ = ["BurnwatchClient", "X402Monitor", "PaymentMirror"]
-__version__ = "0.1.1"
+__version__ = "0.1.2"
