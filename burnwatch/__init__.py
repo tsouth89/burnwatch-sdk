@@ -13,7 +13,15 @@ unreachable, your agent keeps paying as normal.
     bw.close()  # or use `with BurnwatchClient(...) as bw:`
 """
 from burnwatch.client import BurnwatchClient
+from burnwatch.llm import llm_cost, monitor_llm, set_prices
 from burnwatch.x402 import PaymentMirror, X402Monitor
 
-__all__ = ["BurnwatchClient", "X402Monitor", "PaymentMirror"]
-__version__ = "0.1.2"
+__all__ = [
+    "BurnwatchClient",
+    "X402Monitor",
+    "PaymentMirror",
+    "monitor_llm",
+    "llm_cost",
+    "set_prices",
+]
+__version__ = "0.2.0"

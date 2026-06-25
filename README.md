@@ -73,6 +73,20 @@ mon.after_payment(resp, recipient=url, resource="GET /forecast")
 
 See [`examples/`](examples/) for runnable demos.
 
+## Watch your API bill too
+
+A runaway agent that burns $900 of OpenAI tokens overnight is the same failure as a wallet drain, and the same rules catch it. Wrap your LLM client once and every call's cost flows through Burnwatch:
+
+```python
+from burnwatch import BurnwatchClient, monitor_llm
+
+bw = BurnwatchClient(endpoint="https://app.burnwatch.dev", token="bw_...")
+client = monitor_llm(OpenAI(), bw, agent_ref="agent_7f3c")
+client.chat.completions.create(model="gpt-4o", messages=[...])   # cost recorded automatically
+```
+
+Works with OpenAI and Anthropic (and compatible clients): it's duck-typed and never imports them. Costs are estimated from a built-in price table, overridable with `set_prices()`. Sync, non-streaming calls are captured automatically; for streaming or async, compute `llm_cost()` and pass it to `bw.record()`. See [`examples/openai_spend.py`](examples/openai_spend.py).
+
 ## What gets sent (and what never does)
 
 Each `record()` call queues one JSON object like this:
