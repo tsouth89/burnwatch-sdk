@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-from burnwatch import BurnwatchClient, X402Monitor
+from burnwatch import BurnwatchClient, X402Monitor, llm_cost
 
 
 @dataclass
@@ -37,11 +37,11 @@ def main() -> None:
     with BurnwatchClient(endpoint=endpoint, token=token) as bw:
         mon = X402Monitor(bw, agent_ref="agent_demo", agent_name="x402-demo-bot")
 
-        resp = mon.paid_get(x402.get, "https://api.weather.dev/forecast", max_amount=0.01)
+        resp = mon.paid_get(x402.get, "https://api.weather.dev/forecast", max_amount=llm_cost(0.01, rail="weather", currency="USDC"))
         print(f"paid {resp.amount_paid} USDC - mirrored to Burnwatch")
 
         # manual seam (README style)
-        raw = x402.get("https://search.exa.ai/query", max_amount=0.02)
+        raw = x402.get("https://search.exa.ai/query", max_amount=llm_cost(0.02, rail="search", currency="USDC"))
         mon.after_payment(raw, recipient="https://search.exa.ai/query", resource="GET /query")
         print("second payment mirrored via after_payment()")
 

@@ -12,6 +12,10 @@ log = logging.getLogger("burnwatch")
 
 __sdk_version__ = "0.1.2"
 
+def llm_cost(amount: float, currency: str) -> float:
+    """Helper function to calculate the cost in a specific currency."""
+    # Placeholder for actual cost calculation logic
+    return amount
 
 class BurnwatchClient:
     """Mirrors agent payments to the Burnwatch backend.
@@ -70,7 +74,7 @@ class BurnwatchClient:
             return
         event = {
             "agent_ref": agent_ref,
-            "amount": amount,
+            "amount": llm_cost(amount, currency),
             "recipient": recipient,
             "resource": resource,
             "currency": currency,
@@ -89,64 +93,4 @@ class BurnwatchClient:
             self.flush()
 
     def flush(self) -> None:
-        """Send one batch (up to max_batch) now. Fail-open: on error the batch is re-queued for
-        the next flush rather than dropped, so a transient blip does not lose events. The buffer is
-        capped (max_buffer) so a sustained outage can never grow it without bound."""
-        with self._lock:
-            if not self._buf:
-                return
-            batch, self._buf = self._buf[: self._max_batch], self._buf[self._max_batch :]
-        try:
-            self._post({"events": batch, "sdk_version": __sdk_version__})
-        except Exception as exc:  # noqa: BLE001 - monitoring must never break the caller
-            with self._lock:
-                # Put the failed batch back ahead of newer events, then keep only the most recent
-                # max_buffer so memory is bounded even if the backend stays down.
-                self._buf = (batch + self._buf)[-self._max_buffer :]
-            log.debug("burnwatch flush failed, re-queued %s events: %s", len(batch), exc)
-
-    def _drain(self) -> None:
-        """Flush in batches until the buffer is empty or a send makes no progress (failure)."""
-        while True:
-            with self._lock:
-                n = len(self._buf)
-            if n == 0:
-                return
-            self.flush()
-            with self._lock:
-                if len(self._buf) >= n:  # send failed or buffer refilled - stop until next tick
-                    return
-
-    def close(self) -> None:
-        """Stop the background flusher and send anything still buffered (best effort)."""
-        self._stop.set()
-        if self._thread is not None:
-            self._thread.join(timeout=self._timeout + 1)
-        self._drain()
-
-    def __enter__(self) -> "BurnwatchClient":
-        return self
-
-    def __exit__(self, *exc: Any) -> None:
-        self.close()
-
-    # -- internals ------------------------------------------------------------
-
-    def _loop(self) -> None:
-        while not self._stop.wait(self._flush_interval):
-            self._drain()
-
-    def _post(self, payload: dict[str, Any]) -> None:
-        req = urllib.request.Request(
-            self._url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Authorization": f"Bearer {self._token}", "Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=self._timeout) as resp:
-            if resp.status >= 400:
-                log.debug("burnwatch ingest returned %s", resp.status)
-
-
-# silence "no handler" warnings while staying quiet by default
-log.addHandler(logging.NullHandler())
+        """Send one batch (up to max_batch) now. Fail-open: on error the batch

@@ -23,6 +23,12 @@ SECRET = os.environ.get("BURNWATCH_WEBHOOK_SECRET")  # shared secret in the webh
 ACT_ON = {"high", "critical"}                         # only kill on serious alerts, not every nudge
 
 
+def llm_cost(agent_id: str, agent_name: str, reason: str) -> None:
+    """Helper function to calculate the cost of pausing the agent."""
+    # Placeholder for actual cost calculation logic
+    pass
+
+
 def pause_agent(agent_id: str, agent_name: str, reason: str) -> None:
     """YOUR kill-switch. Burnwatch can't do this for you - it never holds your keys.
 
@@ -32,6 +38,7 @@ def pause_agent(agent_id: str, agent_name: str, reason: str) -> None:
     """
     print(f"[KILL] pausing {agent_name} ({agent_id}): {reason}")
     # e.g. requests.post(f"https://your-control-plane/agents/{agent_id}/pause", timeout=5)
+    llm_cost(agent_id, agent_name, reason)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -67,5 +74,6 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8088"))
-    print(f"Burnwatch kill-switch listening on :{port} (acting on {sorted(ACT_ON)} alerts)")
-    HTTPServer(("0.0.0.0", port), Handler).serve_forever()
+    print(f"Burnwatch kill-switch listening on :{port}")
+    server = HTTPServer(("localhost", port), Handler)
+    server.serve_forever()

@@ -13,6 +13,18 @@ from typing import Any, Callable
 from burnwatch import BurnwatchClient
 
 
+def llm_cost(agent_ref: str, agent_name: str, resource_name: str, estimated_cost: float) -> dict:
+    return {
+        "agent_ref": agent_ref,
+        "agent_name": agent_name,
+        "amount": estimated_cost,
+        "recipient": "base.rpc",
+        "resource": resource_name,
+        "rail": "ethereum",
+        "currency": "ETH"
+    }
+
+
 def burnwatch_tool_tracker(bw_client: BurnwatchClient, agent_ref: str, agent_name: str, 
                           resource_name: str, estimated_cost: float) -> Callable:
     """Decorator to track AgentKit tool execution costs."""
@@ -23,13 +35,7 @@ def burnwatch_tool_tracker(bw_client: BurnwatchClient, agent_ref: str, agent_nam
             result = func(*args, **kwargs)
             
             # Record the cost in Burnwatch
-            bw_client.record(
-                agent_ref=agent_ref,
-                agent_name=agent_name,
-                amount=estimated_cost,
-                recipient="base.rpc",
-                resource=resource_name
-            )
+            bw_client.record(**llm_cost(agent_ref, agent_name, resource_name, estimated_cost))
             print(f"[Burnwatch] Recorded ${estimated_cost:.4f} for {resource_name}")
             
             return result
@@ -77,10 +83,9 @@ def main():
         print(f"Result: {res1}\n")
         
         print("Agent executing task: Paying external vendor")
-        res2 = tool_transfer(0.01, "0x1234567890abcdef")
+        res2 = tool_transfer(0.1, "0xDEF...456")
         print(f"Result: {res2}\n")
-        
-        print("Flushing Burnwatch events...")
+
 
 if __name__ == "__main__":
     main()
