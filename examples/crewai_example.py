@@ -9,7 +9,7 @@ Usage:
 import os
 from typing import Any, Dict
 
-from burnwatch import BurnwatchClient
+from burnwatch import BurnwatchClient, llm_cost
 from crewai import Agent, Task, Crew, Process
 from crewai.tools import tool
 from langchain_openai import ChatOpenAI
@@ -21,14 +21,13 @@ from langchain_core.outputs import LLMResult
 class BurnwatchCallbackHandler(BaseCallbackHandler):
     """Callback Handler that logs token usage to Burnwatch."""
     
-    def __init__(self, bw_client: BurnwatchClient, agent_ref: str, agent_name: str):
+    def __init__(self, bw_client: BurnwatchClient, agent_ref: str, agent_name: str,
+                 rail: str = "usd", currency: str = "USD"):
         self.bw = bw_client
         self.agent_ref = agent_ref
         self.agent_name = agent_name
-        # Approximate pricing (in USD)
-        self.prices = {
-            "gpt-4o-mini": {"prompt": 0.150 / 1_000_000, "completion": 0.600 / 1_000_000}
-        }
+        self.rail = rail
+        self.currency = currency
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         try:
@@ -46,6 +45,8 @@ class BurnwatchCallbackHandler(BaseCallbackHandler):
                     agent_ref=self.agent_ref,
                     agent_name=self.agent_name,
                     amount=cost,
+                    rail=self.rail,
+                    currency=self.currency,
                     recipient="api.openai.com",
                     resource=f"POST /v1/chat/completions ({model_name})"
                 )

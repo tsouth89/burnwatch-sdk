@@ -10,7 +10,7 @@ import os
 import time
 from typing import Any, Dict, List, Optional
 
-from burnwatch import BurnwatchClient
+from burnwatch import BurnwatchClient, llm_cost
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.outputs import LLMResult
 from langchain_openai import ChatOpenAI
@@ -20,15 +20,13 @@ from langchain_core.messages import HumanMessage
 class BurnwatchCallbackHandler(BaseCallbackHandler):
     """Callback Handler that logs token usage to Burnwatch."""
     
-    def __init__(self, bw_client: BurnwatchClient, agent_ref: str, agent_name: str):
+    def __init__(self, bw_client: BurnwatchClient, agent_ref: str, agent_name: str,
+                 rail: str = "usd", currency: str = "USD"):
         self.bw = bw_client
         self.agent_ref = agent_ref
         self.agent_name = agent_name
-        # Approximate pricing (in USD) for demonstration purposes
-        self.prices = {
-            "gpt-4o-mini": {"prompt": 0.150 / 1_000_000, "completion": 0.600 / 1_000_000},
-            "gpt-3.5-turbo": {"prompt": 0.50 / 1_000_000, "completion": 1.50 / 1_000_000}
-        }
+        self.rail = rail
+        self.currency = currency
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         """Run when LLM ends running."""
@@ -42,15 +40,16 @@ class BurnwatchCallbackHandler(BaseCallbackHandler):
             prompt_tokens = usage.get("prompt_tokens", 0)
             completion_tokens = usage.get("completion_tokens", 0)
             
-            # Calculate cost
-            pricing = self.prices.get(model_name, self.prices["gpt-4o-mini"])
-            cost = (prompt_tokens * pricing["prompt"]) + (completion_tokens * pricing["completion"])
+            # Calculate cost using burnwatch's llm_cost helper (replaces hardcoded prices)
+            cost = llm_cost(model=model_name, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
             
             if cost > 0:
                 self.bw.record(
                     agent_ref=self.agent_ref,
                     agent_name=self.agent_name,
                     amount=cost,
+                    rail=self.rail,
+                    currency=self.currency,
                     recipient="api.openai.com",
                     resource=f"POST /v1/chat/completions ({model_name})"
                 )
