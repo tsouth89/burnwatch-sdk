@@ -38,12 +38,16 @@ def test_llm_cost_none_usage_returns_none() -> None:
 
 
 def test_set_prices_override() -> None:
+    from burnwatch import llm as llm_mod
+
+    previous = llm_mod.PRICES.get("custom-model")
+    llm_mod.PRICES["custom-model"] = (9.0, 9.0)
     set_prices({"custom-model": (1.0, 2.0)})
     try:
         cost = llm_cost("custom-model", {"prompt_tokens": 1_000_000, "completion_tokens": 1_000_000})
         assert cost == 3.0
     finally:
-        # avoid leaking into other tests
-        from burnwatch import llm as llm_mod
-
-        llm_mod.PRICES.pop("custom-model", None)
+        if previous is None:
+            llm_mod.PRICES.pop("custom-model", None)
+        else:
+            llm_mod.PRICES["custom-model"] = previous

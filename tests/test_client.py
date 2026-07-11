@@ -10,7 +10,7 @@ from burnwatch.client import BurnwatchClient
 
 
 @pytest.fixture
-def client() -> BurnwatchClient:
+def client(monkeypatch: pytest.MonkeyPatch) -> BurnwatchClient:
     # Long flush interval so the background thread stays idle during tests.
     bw = BurnwatchClient(
         "https://example.test",
@@ -20,6 +20,9 @@ def client() -> BurnwatchClient:
         max_buffer=4,
         timeout=0.5,
     )
+    # Keep a no-op transport for fixture teardown: client.close() drains the buffer,
+    # and monkeypatch undoes per-test stubs only after this fixture tears down.
+    monkeypatch.setattr(bw, "_post", lambda _payload: None)
     yield bw
     bw.close()
 
@@ -108,8 +111,6 @@ def test_flush_evicts_oldest_when_buffer_full(
         client.record(agent_ref="a", amount=float(i), recipient=f"r{i}")
         client.flush()
 
-    assert len(client._buf) <= 4
     recipients = [e["recipient"] for e in client._buf]
-    # Newest events retained (evict from the front of the re-queued buffer).
-    assert "r5" in recipients
-    assert "r0" not in recipients
+    # Newest max_buffer events retained after repeated failed re-queues.
+    assert recipients == ["r2", "r3", "r4", "r5"]

@@ -24,9 +24,7 @@ jobs:
           python-version: ${{ matrix.python }}
 
       - name: Install
-        run: |
-          pip install -e .
-          pip install pytest
+        run: python -m pip install -e ".[dev]"
 
       - name: Import smoke test
         run: |
