@@ -14,6 +14,7 @@ unreachable, your agent keeps paying as normal.
 """
 from burnwatch.client import BurnwatchClient
 from burnwatch.llm import llm_cost, monitor_llm, set_prices
+from burnwatch.redact import dangerous_context_keys, scrub_context
 from burnwatch.x402 import PaymentMirror, X402Monitor
 
 __all__ = [
@@ -23,5 +24,7 @@ __all__ = [
     "monitor_llm",
     "llm_cost",
     "set_prices",
+    "scrub_context",
+    "dangerous_context_keys",
 ]
 __version__ = "0.2.0"
