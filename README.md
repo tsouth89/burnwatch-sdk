@@ -71,7 +71,7 @@ resp = x402_client.get(url, max_amount=price)
 mon.after_payment(resp, recipient=url, resource="GET /forecast")
 ```
 
-See [`examples/`](examples/) for runnable demos.
+See [`examples/`](examples/) for runnable demos — including offline LangChain / CrewAI / AgentKit starting points (`langchain_callback.py`, `crewai_tools.py`, `agentkit_payment.py`).
 
 ## Watch your API bill too
 
