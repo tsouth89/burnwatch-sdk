@@ -33,8 +33,8 @@ def dangerous_context_keys(context: dict[str, Any] | None) -> list[str]:
 def scrub_context(context: dict[str, Any] | None) -> dict[str, Any] | None:
     """Drop denylisted and ``_bw*`` keys; return ``None`` if nothing remains.
 
-    Matching is case-insensitive for denylist entries. Nested dicts are not walked —
-    same contract as backend ingest scrubbing.
+    Matching is case-insensitive for denylist entries and the ``_bw`` prefix.
+    Nested dicts are not walked — same contract as backend ingest scrubbing.
     """
     if not context:
         return None
