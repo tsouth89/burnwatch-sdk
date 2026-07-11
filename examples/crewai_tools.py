@@ -39,7 +39,8 @@ def paid_search_tool(bw: BurnwatchClient, *, agent_ref: str, agent_name: str, qu
         rail="http",
         currency="USD",
         resource="GET /search",
-        context={"query": query[:80]},
+        # Never put raw query text in context — it can contain PII/secrets.
+        context={"query_chars": len(query)},
     )
     return f"results for: {query}"
 

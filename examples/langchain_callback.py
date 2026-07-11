@@ -36,8 +36,10 @@ class BurnwatchSpendCallback:
 
     def on_llm_end(self, llm_output: dict[str, Any]) -> None:
         usage = llm_output.get("token_usage")
-        model = str(llm_output.get("model_name") or "gpt-4o-mini")
-        cost = llm_cost(model, usage)
+        model = llm_output.get("model_name")
+        if not model:
+            return  # never guess a model — wrong pricing / attribution is worse than a skip
+        cost = llm_cost(str(model), usage)
         if cost is None:
             return
         # LLM spend is USD API bill spend — not x402/USDC.
@@ -45,8 +47,8 @@ class BurnwatchSpendCallback:
             agent_ref=self.agent_ref,
             agent_name=self.agent_name,
             amount=cost,
-            recipient=model,
-            rail="openai" if model.startswith(("gpt", "o1", "o3", "o4")) else "llm",
+            recipient=str(model),
+            rail="openai" if str(model).startswith(("gpt", "o1", "o3", "o4")) else "llm",
             currency="USD",
             resource=f"chat.completions ({model})",
         )
