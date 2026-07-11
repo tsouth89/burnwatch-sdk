@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+
+tone_instructions: >-
+  Focus on bugs, security, and correctness. Skip style nitpicks and optional
+  refactors. When in doubt, stay silent.
+
+reviews:
+  profile: chill
+
+  high_level_summary: false
+  high_level_summary_in_walkthrough: false
+  review_status: false
+  review_details: false
+  collapse_walkthrough: true
+  changed_files_summary: false
+  sequence_diagrams: false
+  estimate_code_review_effort: false
+  assess_linked_issues: false
+  related_issues: false
+  related_prs: false
+  suggested_labels: false
+  suggested_reviewers: false
+  poem: false
+  in_progress_fortune: false
+  enable_prompt_for_ai_agents: false
+
+  path_filters:
+    - "!docs/**"
+    - "!**/*.md"
+    - "!**/package-lock.json"
+
+  auto_review:
+    enabled: true
+    drafts: false
+
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+    simplify:
+      enabled: false
+
+chat:
+  art: false
+  auto_reply: false
