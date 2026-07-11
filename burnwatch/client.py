@@ -8,6 +8,8 @@ import urllib.request
 from datetime import datetime, timezone
 from typing import Any
 
+from burnwatch.redact import scrub_context
+
 log = logging.getLogger("burnwatch")
 
 __sdk_version__ = "0.2.0"
@@ -80,8 +82,10 @@ class BurnwatchClient:
         }
         if agent_name:
             event["agent_name"] = agent_name
-        if context:
-            event["context"] = context
+        # Strip secret-shaped keys in-process before they ever hit the buffer/wire.
+        scrubbed = scrub_context(context)
+        if scrubbed:
+            event["context"] = scrubbed
         with self._lock:
             self._buf.append(event)
             full = len(self._buf) >= self._max_batch
