@@ -25,6 +25,7 @@ def test_scrub_context_drops_denylisted_keys() -> None:
 def test_scrub_context_drops_bw_prefix_keys() -> None:
     assert scrub_context({"_bw": {"x": 1}, "tx_hash": "0x1"}) == {"tx_hash": "0x1"}
     assert scrub_context({"_bw_meta": "nope"}) is None
+    assert scrub_context({"_BW_meta": "nope", "ok": 1}) == {"ok": 1}
 
 
 def test_scrub_context_empty_and_none() -> None:

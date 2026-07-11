@@ -38,9 +38,10 @@ def scrub_context(context: dict[str, Any] | None) -> dict[str, Any] | None:
     """
     if not context:
         return None
-    clean = {
-        k: v
-        for k, v in context.items()
-        if k.lower() not in _CONTEXT_DENYLIST and not k.startswith("_bw")
-    }
+    clean: dict[str, Any] = {}
+    for k, v in context.items():
+        lowered = k.lower()
+        if lowered in _CONTEXT_DENYLIST or lowered.startswith("_bw"):
+            continue
+        clean[k] = v
     return clean or None
