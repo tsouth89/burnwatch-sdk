@@ -24,11 +24,14 @@ jobs:
           python-version: ${{ matrix.python }}
 
       - name: Install
-        run: pip install -e .
+        run: python -m pip install -e ".[dev]"
 
       - name: Import smoke test
         run: |
           python -c "import burnwatch; from burnwatch import BurnwatchClient, X402Monitor, PaymentMirror; print('burnwatch', burnwatch.__version__, 'import ok')"
+
+      - name: Unit tests
+        run: pytest -q
 
       - name: Build sdist + wheel
         run: |
