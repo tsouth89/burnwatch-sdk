@@ -27,6 +27,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 SECRET = os.environ.get("BURNWATCH_WEBHOOK_SECRET")  # per-org signing secret from the dashboard
 ACT_ON = {"high", "critical"}                         # only kill on serious alerts, not every nudge
 MAX_AGE = 300                                         # seconds; reject stale (replayed) deliveries
+MAX_BODY_BYTES = 1_000_000
 
 
 def pause_agent(agent_id: str, agent_name: str, reason: str) -> None:
@@ -59,7 +60,15 @@ def _verified(body: bytes, headers) -> bool:
 
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
-        body = self.rfile.read(int(self.headers.get("Content-Length", 0) or 0))
+        try:
+            length = int(self.headers.get("Content-Length", 0) or 0)
+        except ValueError:
+            length = -1
+        if length < 0 or length > MAX_BODY_BYTES:
+            self.send_response(400)
+            self.end_headers()
+            return
+        body = self.rfile.read(length)
         if not _verified(body, self.headers):
             self.send_response(403)
             self.end_headers()
@@ -67,6 +76,10 @@ class Handler(BaseHTTPRequestHandler):
         try:
             alert = json.loads(body)
         except json.JSONDecodeError:
+            self.send_response(400)
+            self.end_headers()
+            return
+        if not isinstance(alert, dict):
             self.send_response(400)
             self.end_headers()
             return

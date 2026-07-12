@@ -49,6 +49,7 @@ class BurnwatchClient:
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._pause_cache: dict[str, tuple[float, bool]] = {}
+        self._max_pause_cache = 256
         self._thread: threading.Thread | None = None
         if enabled:
             self._thread = threading.Thread(target=self._loop, name="burnwatch-flush", daemon=True)
@@ -126,6 +127,11 @@ class BurnwatchClient:
             paused = False
         with self._lock:
             self._pause_cache[agent_ref] = (now + cache_seconds, paused)
+            if len(self._pause_cache) > self._max_pause_cache:
+                for k in [k for k, (exp, _) in self._pause_cache.items() if exp <= now]:
+                    del self._pause_cache[k]
+                while len(self._pause_cache) > self._max_pause_cache:
+                    self._pause_cache.pop(next(iter(self._pause_cache)))
         return paused
 
     def flush(self) -> None:
