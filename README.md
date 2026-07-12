@@ -2,9 +2,9 @@
 
 # Burnwatch SDK
 
-**Observe-only spend monitoring for autonomous AI agents.**
+**Agent spend observability — API bills, tools, and onchain micropayments.**
 
-Your agents run up real bills on their own: API calls, tools, compute, and (increasingly) x402 or stablecoin payments. A bug, a runaway loop, or a prompt injection can burn a huge amount fast, whether that's API credits or a drained wallet. Burnwatch learns each agent's normal spend and alerts you the moment something looks wrong. It never holds your keys and never sits in the payment path.
+Your agents run up real bills on their own: LLM APIs, tools, compute, and (increasingly) x402 or stablecoin payments. A bug, a runaway loop, or a prompt injection can burn a huge amount fast. Burnwatch learns each agent's normal spend and alerts you the moment something looks wrong. Wire a pause webhook if you want the loop to stop itself. It never holds your keys and never sits in the payment path unless you opt into soft-pause checks in your own process.
 
 [![PyPI](https://img.shields.io/pypi/v/burnwatch.svg)](https://pypi.org/project/burnwatch/)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://pypi.org/project/burnwatch/)
@@ -30,31 +30,41 @@ The cloud backend that learns baselines and runs detection is a separate, source
 pip install burnwatch
 ```
 
-## Quick start
+## Quick start — watch your API bill
 
-Call `record()` after each payment your agent makes:
+A runaway agent that burns $900 of OpenAI tokens overnight is the same failure as a wallet drain. Wrap your LLM client once:
+
+```python
+from burnwatch import BurnwatchClient, monitor_llm
+
+bw = BurnwatchClient(endpoint="https://app.burnwatch.dev", token="bw_your_token")
+client = monitor_llm(OpenAI(), bw, agent_ref="agent_7f3c", agent_name="research-bot")
+client.chat.completions.create(model="gpt-4o", messages=[...])   # cost recorded as rail=llm
+```
+
+Works with OpenAI and Anthropic (and compatible clients): duck-typed, never imports them. Costs come from a built-in price table (`set_prices()` to override). Sync, non-streaming calls are captured automatically; for streaming or async, compute `llm_cost()` and pass it to `bw.record()`. See [`examples/openai_spend.py`](examples/openai_spend.py).
+
+Get an ingest token at [app.burnwatch.dev](https://app.burnwatch.dev) under **Settings -> Collector setup**.
+
+## Or record any payment
 
 ```python
 from burnwatch import BurnwatchClient
 
 with BurnwatchClient(endpoint="https://app.burnwatch.dev", token="bw_your_token") as bw:
     bw.record(
-        agent_ref="agent_7f3c",          # stable id for this agent
-        agent_name="research-bot",       # optional; used when auto-provisioning
+        agent_ref="agent_7f3c",
+        agent_name="research-bot",
         amount=0.002,
-        recipient="api.weather.dev",     # payee, endpoint, or address
-        resource="GET /forecast",        # optional, for richer alerts
+        recipient="api.weather.dev",
+        resource="GET /forecast",
         rail="x402",
         currency="USDC",
-        context={"tx_hash": "0xabc...", "chain_id": "eip155:8453"},  # optional, public only
+        context={"tx_hash": "0xabc...", "chain_id": "eip155:8453"},
     )
 ```
 
-Get an ingest token at [app.burnwatch.dev](https://app.burnwatch.dev) under **Settings -> Collector setup**.
-
 ## x402 wrapper
-
-If you pay over x402, wrap your existing client and let Burnwatch mirror metadata automatically:
 
 ```python
 from burnwatch import BurnwatchClient, X402Monitor
@@ -64,28 +74,7 @@ with BurnwatchClient(endpoint="https://app.burnwatch.dev", token="bw_...") as bw
     resp = mon.paid_get(x402_client.get, "https://api.weather.dev/forecast", max_amount=0.01)
 ```
 
-Or mirror manually after your own client returns:
-
-```python
-resp = x402_client.get(url, max_amount=price)
-mon.after_payment(resp, recipient=url, resource="GET /forecast")
-```
-
-See [`examples/`](examples/) for runnable demos — including offline LangChain / CrewAI / AgentKit starting points (`langchain_callback.py`, `crewai_tools.py`, `agentkit_payment.py`).
-
-## Watch your API bill too
-
-A runaway agent that burns $900 of OpenAI tokens overnight is the same failure as a wallet drain, and the same rules catch it. Wrap your LLM client once and every call's cost flows through Burnwatch:
-
-```python
-from burnwatch import BurnwatchClient, monitor_llm
-
-bw = BurnwatchClient(endpoint="https://app.burnwatch.dev", token="bw_...")
-client = monitor_llm(OpenAI(), bw, agent_ref="agent_7f3c")
-client.chat.completions.create(model="gpt-4o", messages=[...])   # cost recorded automatically
-```
-
-Works with OpenAI and Anthropic (and compatible clients): it's duck-typed and never imports them. Costs are estimated from a built-in price table, overridable with `set_prices()`. Sync, non-streaming calls are captured automatically; for streaming or async, compute `llm_cost()` and pass it to `bw.record()`. See [`examples/openai_spend.py`](examples/openai_spend.py).
+See [`examples/`](examples/) for runnable demos — including offline LangChain / CrewAI / AgentKit starting points.
 
 ## What gets sent (and what never does)
 
@@ -134,9 +123,15 @@ Every alert ships with explainable evidence (the exact numbers and thresholds th
 
 ![Every alert ships with the evidence](assets/burnwatch-evidence.png)
 
-## Turn alerts into action (optional)
+## Soft pause — recommended response loop
 
-Burnwatch is observe-only on purpose: it never sits in your payment path and never holds your keys, so it can't slow or break your agent. To make a detection *do* something automatically, point a webhook (dashboard -> Settings -> Alert delivery) at a small receiver that pauses or de-funds the agent. [`examples/killswitch.py`](examples/killswitch.py) is a complete, stdlib-only one you can copy. Routing to on-call instead? [`examples/pagerduty_relay.py`](examples/pagerduty_relay.py) maps the webhook to PagerDuty's Events API (same pattern for Opsgenie and similar).
+Burnwatch is observe-first on purpose: it never sits in your payment path by default and never holds your keys, so monitoring can't slow or break your agent. To close the loop when something looks wrong:
+
+1. Dashboard → **Settings → Alert delivery** → add a JSON webhook URL.
+2. Run [`examples/killswitch.py`](examples/killswitch.py) (or copy it) and point the webhook at that receiver.
+3. Replace `pause_agent()` with whatever actually stops spend (feature flag, revoke allowance, kill process).
+
+Optionally poll `should_pause(agent_ref)` from the SDK before your next payment (fail-open if Burnwatch is unreachable). Routing to on-call instead? [`examples/pagerduty_relay.py`](examples/pagerduty_relay.py).
 
 ## Client reference
 
@@ -145,6 +140,7 @@ Burnwatch is observe-only on purpose: it never sits in your payment path and nev
 | Method | Purpose |
 |--------|---------|
 | `record(...)` | Queue one payment. Non-blocking, never raises. |
+| `should_pause(agent_ref)` | Soft-pause check (cached, fail-open). |
 | `flush()` | Send buffered events now. |
 | `close()` | Stop the flusher and send anything buffered. |
 
