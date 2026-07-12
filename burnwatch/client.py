@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from typing import Any
@@ -33,7 +34,8 @@ class BurnwatchClient:
         enabled: bool = True,
         max_buffer: int | None = None,
     ) -> None:
-        self._url = endpoint.rstrip("/") + "/ingest/payments"
+        self._endpoint = endpoint.rstrip("/")
+        self._url = self._endpoint + "/ingest/payments"
         self._token = token
         self._flush_interval = flush_interval
         self._max_batch = max_batch
@@ -46,6 +48,8 @@ class BurnwatchClient:
         self._buf: list[dict[str, Any]] = []
         self._lock = threading.Lock()
         self._stop = threading.Event()
+        self._pause_cache: dict[str, tuple[float, bool]] = {}
+        self._max_pause_cache = 256
         self._thread: threading.Thread | None = None
         if enabled:
             self._thread = threading.Thread(target=self._loop, name="burnwatch-flush", daemon=True)
@@ -91,6 +95,44 @@ class BurnwatchClient:
             full = len(self._buf) >= self._max_batch
         if full:
             self.flush()
+
+    def should_pause(self, agent_ref: str, *, cache_seconds: float = 15.0) -> bool:
+        """Return True if this agent is soft-paused.
+
+        Fail-open: if Burnwatch is unreachable or disabled, returns False so monitoring never
+        blocks spend by accident. Cache results briefly to avoid a request per payment.
+        """
+        if not self._enabled:
+            return False
+        now = datetime.now(timezone.utc).timestamp()
+        with self._lock:
+            cached = self._pause_cache.get(agent_ref)
+            if cached is not None:
+                expires_at, value = cached
+                if now < expires_at:
+                    return value
+        paused = False
+        try:
+            url = self._endpoint.rstrip("/") + "/ingest/agents/" + urllib.parse.quote(agent_ref, safe="") + "/pause-status"
+            req = urllib.request.Request(
+                url,
+                headers={"Authorization": f"Bearer {self._token}", "Accept": "application/json"},
+                method="GET",
+            )
+            with urllib.request.urlopen(req, timeout=self._timeout) as resp:
+                body = json.loads(resp.read().decode("utf-8"))
+                paused = bool(body.get("paused"))
+        except Exception as exc:  # noqa: BLE001 - fail-open
+            log.debug("burnwatch should_pause failed (fail-open): %s", exc)
+            paused = False
+        with self._lock:
+            self._pause_cache[agent_ref] = (now + cache_seconds, paused)
+            if len(self._pause_cache) > self._max_pause_cache:
+                for k in [k for k, (exp, _) in self._pause_cache.items() if exp <= now]:
+                    del self._pause_cache[k]
+                while len(self._pause_cache) > self._max_pause_cache:
+                    self._pause_cache.pop(next(iter(self._pause_cache)))
+        return paused
 
     def flush(self) -> None:
         """Send one batch (up to max_batch) now. Fail-open: on error the batch is re-queued for

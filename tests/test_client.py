@@ -114,3 +114,32 @@ def test_flush_evicts_oldest_when_buffer_full(
     recipients = [e["recipient"] for e in client._buf]
     # Newest max_buffer events retained after repeated failed re-queues.
     assert recipients == ["r2", "r3", "r4", "r5"]
+
+
+def test_should_pause_fail_open(client: BurnwatchClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def boom(*_a: Any, **_k: Any) -> Any:
+        raise RuntimeError("down")
+
+    monkeypatch.setattr("urllib.request.urlopen", boom)
+    assert client.should_pause("agent_7f3c") is False
+
+
+def test_should_pause_reads_status(client: BurnwatchClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    class _Resp:
+        def __enter__(self) -> "_Resp":
+            return self
+
+        def __exit__(self, *_a: Any) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"paused": true, "paused_at": "2026-07-12T00:00:00Z", "paused_reason": "test"}'
+
+    monkeypatch.setattr("urllib.request.urlopen", lambda *_a, **_k: _Resp())
+    assert client.should_pause("agent_7f3c", cache_seconds=60) is True
+    # Second call hits cache (would fail if urlopen required again with boom)
+    monkeypatch.setattr(
+        "urllib.request.urlopen",
+        lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("should use cache")),
+    )
+    assert client.should_pause("agent_7f3c", cache_seconds=60) is True

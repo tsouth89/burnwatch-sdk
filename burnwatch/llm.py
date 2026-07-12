@@ -104,8 +104,9 @@ def _record(bw: Any, agent_ref: str, agent_name: str | None, result: Any, kwargs
             agent_name=agent_name,
             amount=cost,
             recipient=model,
-            rail=_provider(model),
+            rail="llm",
             currency="USD",
+            context={"model": model, "provider": _provider(model)},
         )
     except Exception as exc:  # noqa: BLE001 - never break the caller's LLM call
         log.debug("burnwatch: llm spend capture failed: %s", exc)
