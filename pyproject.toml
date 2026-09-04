@@ -20,8 +20,8 @@ classifiers = [
 [project.urls]
 Homepage = "https://burnwatch.dev"
 Dashboard = "https://app.burnwatch.dev"
-Repository = "https://github.com/tsouth89/burnwatch-sdk"
-Documentation = "https://github.com/tsouth89/burnwatch-sdk/blob/main/README.md"
+Repository = "https://github.com/btsouth/burnwatch-sdk"
+Documentation = "https://github.com/btsouth/burnwatch-sdk/blob/main/README.md"
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
